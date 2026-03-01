@@ -1,1 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC Wallet</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
+.container { width: 100%; max-width: 440px; }
+h1 { color: #f7931a; font-size: 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+.net-badge { background: #1e3a1e; color: #4caf50; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+.net-badge.testnet { background: #3a2a1e; color: #ff9800; }
+.card { background: #161616; border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 1px solid #222; }
+.card-title { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; font-weight: 700; }
+label { display: block; font-size: 12px; color: #777; margin-bottom: 5px; margin-top: 12px; }
+label:first-of-type { margin-top: 0; }
+input, select { width: 100%; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 10px; padding: 11px 14px; color: #fff; font-size: 13px; outline: none; transition: border 0.2s; }
+input:focus, select:focus { border-color: #f7931a; }
+input::placeholder { color: #444; }
+select option { background: #161616; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; }
+.btn { border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-top: 14px; }
+.btn-orange { background: linear-gradient(135deg, #f7931a, #c97a00); color: #fff; }
+.btn-orange:hover { opacity: 0.88; }
+.btn-orange:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-gray { background: #222; color: #aaa; }
+.btn-gray:hover { background: #2a2a2a; }
+.btn-sm { padding: 8px 14px; font-size: 12px; width: auto; margin-top: 0; border-radius: 8px; }
+.balance-big { font-size: 32px; font-weight: 800; color: #f7931a; margin: 6px 0 2px; }
+.balance-usd { font-size: 14px; color: #666; }
+.addr-row { background: #0f0f0f; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 8px; }
+.addr-text { font-size: 11px; color: #888; word-break: break-all; flex: 1; }
+.copy-btn { background: #2a2a2a; border: none; color: #aaa; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+.copy-btn:hover { background: #333; color: #fff; }
+.fee-hint { font-size: 11px; color: #555; margin-top: 6px; display: flex; justify-content: space-between; }
+.fee-hint span { color: #f7931a; }
+.result { border-radius: 12px; padding: 14px 16px; font-size: 13px; margin-top: 14px; line-height: 1.7; display: none; }
+.result.success { background: #0a1f0a; border: 1px solid #1a4a1a; color: #6fcf6f; }
+.result.error { background: #1f0a0a; border: 1px solid #4a1a1a; color: #cf6f6f; }
+.result.info { background: #0f0f1f; border: 1px solid #2a2a4a; color: #9f9fcf; }
+.result a { color: #f7931a; text-decoration: none; font-size: 12px; }
+.result a:hover { text-decoration: underline; }
+.tx-list { display: flex; flex-direction: column; gap: 8px; }
+.tx-item { background: #0f0f0f; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.tx-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tx-dot.in { background: #4caf50; }
+.tx-dot.out { background: #f7931a; }
+.tx-info { flex: 1; }
+.tx-id { font-size: 11px; color: #555; font-family: monospace; }
+.tx-meta { font-size: 11px; color: #777; margin-top: 2px; }
+.tx-amt { font-size: 13px; font-weight: 700; }
+.tx-amt.in { color: #4caf50; }
+.tx-amt.out { color: #f7931a; }
+.loader { display: inline-block; width: 14px; height: 14px; border: 2px solid #444; border-top-color: #f7931a; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.section-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { flex: 1; background: #161616; border: 1px solid #222; border-radius: 10px; padding: 10px; font-size: 13px; color: #666; cursor: pointer; text-align: center; transition: all 0.2s; }
+.tab.active { background: #f7931a; border-color: #f7931a; color: #fff; }
+.panel { display: none; }
+.panel.active { display: block; }
+.api-url { font-size: 11px; color: #444; font-family: monospace; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>₿ BTC Wallet <span class="net-badge" id="netBadge">mainnet</span></h1>
 
+  <!-- Config -->
+  <div class="card">
+    <div class="card-title">⚙️ Backend Config</div>
+    <label>Backend API URL</label>
+    <input type="text" id="apiUrl" value="http://localhost:3001/api" />
+    <div class="api-url">Default: http://localhost:3001/api</div>
+    <button class="btn btn-gray btn-sm" style="margin-top:10px;width:auto;" onclick="checkHealth()">Test Connection</button>
+    <div id="healthResult" class="result"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="section-tabs">
+    <div class="tab active" onclick="switchTab('wallet')">Wallet</div>
+    <div class="tab" onclick="switchTab('send')">Send</div>
+    <div class="tab" onclick="switchTab('history')">History</div>
+  </div>
+
+  <!-- Wallet Panel -->
+  <div class="panel active" id="panel-wallet">
+    <div class="card">
+      <div class="card-title">📥 Import / Load Wallet</div>
+      <label>Method</label>
+      <select id="importMethod" onchange="toggleImport()">
+        <option value="wif">WIF Private Key</option>
+        <option value="mnemonic">Mnemonic (Seed Phrase)</option>
+        <option value="address">Address Only (View Balance)</option>
+      </select>
+      <div id="wifInput">
+        <label>WIF Private Key</label>
+        <input type="password" id="wif" placeholder="KwDiBf89... (starts with K, L, or 5)" />
+      </div>
+      <div id="mnemonicInput" style="display:none;">
+        <label>Mnemonic Phrase (12 or 24 words)</label>
+        <input type="password" id="mnemonic" placeholder="word1 word2 word3 ... word12" />
+      </div>
+      <div id="addrInput" style="display:none;">
+        <label>Bitcoin Address</label>
+        <input type="text" id="viewAddress" placeholder="bc1q..." />
+      </div>
+      <button class="btn btn-orange" onclick="importWallet()">Load Wallet</button>
+      <div id="importResult" class="result"></div>
+    </div>
+
+    <div class="card" id="balanceCard" style="display:none;">
+      <div class="card-title">💰 Balance</div>
+      <div class="balance-big" id="balanceBTC">0.00000000 BTC</div>
+      <div class="balance-usd" id="balanceUSD">Loading price...</div>
+      <div class="addr-row">
+        <div class="addr-text" id="walletAddress">—</div>
+        <button class="copy-btn" onclick="copyAddr()">Copy</button>
+      </div>
+      <button class="btn btn-gray" style="margin-top:12px;" onclick="refreshBalance()">↻ Refresh</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✨ Generate New Wallet</div>
+      <button class="btn btn-gray" onclick="generateWallet()">Generate Fresh Wallet</button>
+      <div id="genResult" class="result"></div>
+    </div>
+  </div>
+
+  <!-- Send Panel -->
+  <div class="panel" id="panel-send">
+    <div class="card">
+      <div class="card-title">📤 Send Bitcoin</div>
+      <label>From Address (your wallet)</label>
+      <input type="text" id="sendFrom" placeholder="bc1q... (auto-filled after import)" />
+      <label>WIF Private Key</label>
+      <input type="password" id="sendWif" placeholder="Required to sign transaction" />
+      <label>To Address</label>
+      <input type="text" id="sendTo" placeholder="bc1q... recipient address" />
+      <label>Amount (BTC)</label>
+      <div class="row">
+        <input type="number" id="sendAmount" placeholder="0.00100000" step="0.00000001" min="0" oninput="updateUSD()" />
+        <button class="btn btn-orange btn-sm" onclick="setMax()">MAX</button>
+      </div>
+      <div class="fee-hint">
+        <span>Fee (~0.00001 BTC)</span>
+        <span id="sendUSD">≈ $0</span>
+      </div>
+      <label>Fee Priority</label>
+      <select id="feeRate">
+        <option value="slow">🐢 Slow (~1 day) - Cheapest</option>
+        <option value="medium" selected>🚶 Medium (~1 hour) - Recommended</option>
+        <option value="fast">⚡ Fast (~10 min) - Highest fee</option>
+      </select>
+      <div class="row" style="margin-top:14px;gap:8px;">
+        <button class="btn btn-gray" style="margin-top:0;" onclick="buildTx()">Preview TX</button>
+        <button class="btn btn-orange" style="margin-top:0;" id="sendBtn" onclick="sendBTC()">Send BTC ⚡</button>
+      </div>
+      <div id="sendResult" class="result"></div>
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div class="panel" id="panel-history">
+    <div class="card">
+      <div class="card-title">📋 Transaction History</div>
+      <label>Address</label>
+      <div class="row">
+        <input type="text" id="histAddress" placeholder="bc1q... or auto from wallet" />
+        <button class="btn btn-orange btn-sm" onclick="loadHistory()">Load</button>
+      </div>
+      <div id="txList" class="tx-list" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentAddress = '';
+let currentWIF = '';
+let currentBalance = 0;
+let btcPrice = 0;
+
+const API = () => document.getElementById('apiUrl').value.replace(/\/$/, '');
+
+// ─── Tab Switcher ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+}
+
+// ─── Health Check ─────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const el = document.getElementById('healthResult');
+  el.style.display = 'block'; el.className = 'result info';
+  el.innerHTML = '<span class="loader"></span>Connecting...';
+  try {
+    const r = await fetch(`${API()}/health`);
+    const d = await r.json();
+    el.className = 'result success';
+    el.innerHTML = `✅ Connected! Network: <b>${d.network}</b>`;
+    document.getElementById('netBadge').textContent = d.network;
+    document.getElementById('netBadge').className = `net-badge ${d.network === 'testnet' ? 'testnet' : ''}`;
+  } catch {
+    el.className = 'result error';
+    el.innerHTML = '❌ Cannot connect. Make sure backend is running:<br><code>cd backend && npm install && npm start</code>';
+  }
+}
+
+// ─── Toggle Import Method ─────────────────────────────────────────────────────
+function toggleImport() {
+  const m = document.getElementById('importMethod').value;
+  document.getElementById('wifInput').style.display = m === 'wif' ? '' : 'none';
+  document.getElementById('mnemonicInput').style.display = m === 'mnemonic' ? '' : 'none';
+  document.getElementById('addrInput').style.display = m === 'address' ? '' : 'none';
+}
+
+// ─── Import Wallet ────────────────────────────────────────────────────────────
+async function importWallet() {
+  const el = document.getElementById('importResult');
+  el.style.display = 'block'; el.className = 'result info';
+  el.innerHTML = '<span class="loader"></span>Importing...';
+  const method = document.getElementById('importMethod').value;
+  try {
+    let data;
+    if (method === 'wif') {
+      const wif = document.getElementById('wif').value.trim();
+      const r = await fetch(`${API()}/wallet/import/wif`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ wif })
+      });
+      data = await r.json();
+    } else if (method === 'mnemonic') {
+      const mnemonic = document.getElementById('mnemonic').value.trim();
+      const r = await fetch(`${API()}/wallet/import/mnemonic`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ mnemonic })
+      });
+      data = await r.json();
+    } else {
+      const addr = document.getElementById('viewAddress').value.trim();
+      const r = await fetch(`${API()}/wallet/balance/${addr}`);
+      data = await r.json();
+      data.address = addr;
+    }
+    if (!data.success) throw new Error(data.error);
+    currentAddress = data.address;
+    if (method === 'wif') currentWIF = document.getElementById('wif').value.trim();
+    showBalance(data.balance || data);
+    el.className = 'result success';
+    el.innerHTML = `✅ Wallet loaded: <code>${currentAddress.slice(0,12)}...${currentAddress.slice(-8)}</code>`;
+  } catch(e) {
+    el.className = 'result error'; el.innerHTML = '❌ ' + e.message;
+  }
+}
+
+function showBalance(bal) {
+  currentBalance = parseFloat(bal.confirmed_btc || bal.total_btc || 0);
+  document.getElementById('balanceBTC').textContent = `${bal.confirmed_btc || bal.total_btc} BTC`;
+  document.getElementById('walletAddress').textContent = currentAddress;
+  document.getElementById('balanceCard').style.display = '';
+  document.getElementById('sendFrom').value = currentAddress;
+  if (currentWIF) document.getElementById('sendWif').value = currentWIF;
+  document.getElementById('histAddress').value = currentAddress;
+  fetchPrice();
+}
+
+async function refreshBalance() {
+  if (!currentAddress) return;
+  const r = await fetch(`${API()}/wallet/balance/${currentAddress}`);
+  const d = await r.json();
+  showBalance(d);
+}
+
+async function fetchPrice() {
+  try {
+    const r = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
+    const d = await r.json();
+    btcPrice = parseFloat(d.data.amount);
+    const usd = (currentBalance * btcPrice).toLocaleString('en-US', {style:'currency', currency:'USD'});
+    document.getElementById('balanceUSD').textContent = `≈ ${usd} USD`;
+  } catch { document.getElementById('balanceUSD').textContent = ''; }
+}
+
+// ─── Generate Wallet ──────────────────────────────────────────────────────────
+async function generateWallet() {
+  const el = document.getElementById('genResult');
+  el.style.display = 'block'; el.className = 'result info';
+  el.innerHTML = '<span class="loader"></span>Generating...';
+  try {
+    const r = await fetch(`${API()}/wallet/generate`);
+    const d = await r.json();
+    el.className = 'result success';
+    el.innerHTML = `<b>✅ New Wallet Generated!</b><br>
+      <b>Address:</b> ${d.wallet.address}<br>
+      <b>Mnemonic:</b> <code>${d.wallet.mnemonic}</code><br>
+      <b>Path:</b> ${d.wallet.derivation_path}<br>
+      ⚠️ <b>Save your mnemonic somewhere safe!</b>`;
+  } catch(e) { el.className = 'result error'; el.innerHTML = '❌ ' + e.message; }
+}
+
+// ─── Copy Address ─────────────────────────────────────────────────────────────
+function copyAddr() {
+  navigator.clipboard.writeText(currentAddress);
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+
+// ─── Set Max Amount ───────────────────────────────────────────────────────────
+function setMax() {
+  document.getElementById('sendAmount').value = Math.max(0, currentBalance - 0.00001).toFixed(8);
+  updateUSD();
+}
+
+function updateUSD() {
+  const amt = parseFloat(document.getElementById('sendAmount').value) || 0;
+  const usd = btcPrice ? `≈ $${(amt * btcPrice).toLocaleString()}` : '';
+  document.getElementById('sendUSD').textContent = usd;
+}
+
+// ─── Preview / Build TX ───────────────────────────────────────────────────────
+async function buildTx() {
+  const el = document.getElementById('sendResult');
+  el.style.display = 'block'; el.className = 'result info';
+  el.innerHTML = '<span class="loader"></span>Building preview...';
+  const body = {
+    wif: document.getElementById('sendWif').value.trim(),
+    from_address: document.getElementById('sendFrom').value.trim(),
+    to_address: document.getElementById('sendTo').value.trim(),
+    amount_btc: document.getElementById('sendAmount').value,
+    fee_rate: document.getElementById('feeRate').value
+  };
+  try {
+    const r = await fetch(`${API()}/tx/build`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    el.className = 'result info';
+    el.innerHTML = `<b>📋 TX Preview</b><br>
+      Amount: <b>${d.preview.amount_btc} BTC</b><br>
+      Fee: ${d.preview.fee_btc} BTC (${d.preview.fee_sats} sats)<br>
+      Change: ${d.preview.change_btc} BTC<br>
+      Inputs: ${d.preview.inputs_used} UTXOs<br>
+      Size: ${d.preview.vsize_bytes} vbytes @ ${d.preview.sat_per_vbyte} sat/vb<br>
+      TX ID: <code>${d.tx_id}</code>`;
+  } catch(e) { el.className = 'result error'; el.innerHTML = '❌ ' + e.message; }
+}
+
+// ─── Send BTC ─────────────────────────────────────────────────────────────────
+async function sendBTC() {
+  const el = document.getElementById('sendResult');
+  const btn = document.getElementById('sendBtn');
+  el.style.display = 'block'; el.className = 'result info';
+  el.innerHTML = '<span class="loader"></span>Signing & broadcasting...';
+  btn.disabled = true;
+  const body = {
+    wif: document.getElementById('sendWif').value.trim(),
+    from_address: document.getElementById('sendFrom').value.trim(),
+    to_address: document.getElementById('sendTo').value.trim(),
+    amount_btc: document.getElementById('sendAmount').value,
+    fee_rate: document.getElementById('feeRate').value
+  };
+  try {
+    const r = await fetch(`${API()}/tx/send`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    el.className = 'result success';
+    el.innerHTML = `<b>✅ Sent!</b><br>
+      Amount: <b>${d.details.amount_btc} BTC</b><br>
+      Fee: ${d.details.fee_btc} BTC<br>
+      TXID: <code>${d.txid.slice(0,20)}...</code><br>
+      <a href="${d.explorer_url}" target="_blank">🔗 View on Explorer →</a>`;
+    refreshBalance();
+  } catch(e) { el.className = 'result error'; el.innerHTML = '❌ ' + e.message; }
+  btn.disabled = false;
+}
+
+// ─── TX History ───────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const addr = document.getElementById('histAddress').value.trim();
+  if (!addr) return;
+  const el = document.getElementById('txList');
+  el.innerHTML = '<div style="color:#555;font-size:13px;padding:8px 0;"><span class="loader"></span>Loading...</div>';
+  try {
+    const r = await fetch(`${API()}/tx/history/${addr}?limit=20`);
+    const d = await r.json();
+    if (!d.transactions?.length) { el.innerHTML = '<div style="color:#555;font-size:13px;padding:8px 0;">No transactions found</div>'; return; }
+    el.innerHTML = d.transactions.map(tx => `
+      <div class="tx-item">
+        <div class="tx-dot ${tx.type === 'received' ? 'in' : 'out'}"></div>
+        <div class="tx-info">
+          <div class="tx-id"><a href="${tx.explorer_url}" target="_blank" style="color:#555;">${tx.txid.slice(0,20)}...</a></div>
+          <div class="tx-meta">${tx.confirmed ? '✅ Confirmed' : '⏳ Pending'} ${tx.timestamp ? '· ' + new Date(tx.timestamp).toLocaleDateString() : ''}</div>
+        </div>
+        <div class="tx-amt ${tx.type === 'received' ? 'in' : 'out'}">${tx.type === 'received' ? '+' : '-'}${tx.amount_btc} BTC</div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = `<div style="color:#cf6f6f;font-size:13px;">${e.message}</div>`; }
+}
+
+// Auto-check health on load
+window.addEventListener('load', checkHealth);
+</script>
+</body>
+</html>
